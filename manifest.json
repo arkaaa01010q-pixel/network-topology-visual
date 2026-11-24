@@ -1,0 +1,15 @@
+{
+    "name": "Network Topology Visualizer",
+    "short_name": "NetVisual",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#2563eb",
+    "icons": [
+        {
+            "src": "icon.png",
+            "sizes": "322x322",
+            "type": "image/png"
+        }
+    ]
+}

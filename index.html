@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Topology Visualizer</title>
+    <link rel="icon" type="image/src" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <style>
+        body{
+            margin: 0;
+            padding: 0;
+            justify-content: center;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+        }
+        .papan{
+            position: fixed;
+            left: 20px ;
+        }
+
+        .status{
+            position: fixed;
+            top: 20px;
+            font-size: 20px;
+            height: 20px;
+            width: 205x;
+            background-color: black;
+            color: white;
+            border: 2px solid black;
+            border-radius: 2px;
+            display: none;
+        }
+
+        .btn-bar{
+            position: fixed;
+            display: flex;
+            gap: 5px;
+            border: solid 2px black;
+            height: 50px;
+            width: 700px;
+            top: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 4px;
+        }
+
+        .btn-class{
+            border-radius: 3px;
+        }
+
+        .btn-class button{
+            border-radius: 3px;
+            border: 2px solid black;
+            width: 70px;
+            height: 35px;
+        }
+
+        .popup{
+            position: fixed;
+            height: 50px;
+            width: 400px;
+            gap: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            border:  solid 2px ;
+            border-radius: 4px;
+            top: 20px;
+            display: none;
+        }
+        .popup label{
+            /* position: fixed; */
+            font-weight: 500;
+            left: 20px;
+            align-items: center;
+        }
+        .popup select{
+            width: 120px;
+        }
+        .popup input{
+            width: 180px;
+        }
+
+        canvas{
+            cursor: grab;
+        }
+        .ttl-panel {
+            position: fixed;
+            bottom: 30px;
+            right: 20px;
+            background: white;
+            border: 2px solid black;
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 14px;
+            font-family: sans-serif;
+        }
+        .ttl-badge {
+            background: #f1f5f9;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+    <!-- <div class="papan">
+        <h1>Cargo Load</h1>
+        <h2>(supllay Chars Route Planner)</h2>
+    </div> -->
+    
+    <!-- <div class="status" id="status">Srouchart : 3 Checkpoint</div> -->
+
+    <div class="btn-bar">
+        <div class="btn-class">
+            <button id="export">Export Map</button>
+        </div>
+        <div class="btn-class">
+            <button id="find">Find Path</button>
+        </div>
+        <div class="btn-class">
+            <button id="stepBFS">Step BFS</button>
+        </div>
+        <div class="btn-class">
+            <button id="Server">Anycast Server</button>
+        </div>
+        <div class="btn-class">
+            <button id="Connect">Connect</button>
+        </div>
+        <div class="btn-class">
+            <button id="offline">Toggole offine</button>
+        </div>
+        <div class="btn-class">
+            <button id="btnDelete">Delete</button>
+        </div>
+        <div class="btn-class">
+            <button id="btnClear">Clear</button>
+        </div>
+        <div class="btn-class">
+            <button id="Demo">Load Demo</button>
+        </div>
+    </div>
+
+    <div class="popup" id="popup">
+        <label>Craate</label>
+        <div class="popup-row">
+            <input type="text" id="inputName" placeholder="e.g">
+            <select id="inputRole">
+                <option value="STANDARD">Standard</option>
+                <option value="KEY">Auth Gateway [KEY]</option>
+                <option value="LOCKED">Restricted Core [LOCKED]</option>
+                <option value="SERVER">Server</option>
+            </select>
+            <button id="create">Create</button>
+        </div>
+    </div>
+
+    <div class="popup" id="popupDistric">
+        <label>Ditance</label>
+        <div class="popup-row">
+            <input type="number" id="penghubung" placeholder="e.g">
+            <button id="confrim">Create</button>
+        </div>
+    </div>
+
+    <div class="ttl-panel" id="ttlPanel">
+        <span><b>Reachability (TTL):</b></span>
+        <span class="ttl-badge">1 hop: <strong id="hop1">0</strong></span>
+        <span class="ttl-badge">2 hops: <strong id="hop2">0</strong></span>
+        <span class="ttl-badge">3+ hops: <strong id="hop3">0</strong></span>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // if ('serviceWorker' in navigator) {
+        //     window.addEventListener('load', () => {
+        //         navigator.serviceWorker.register('./sw.js')
+        //             .then((registration) => {
+        //                 console.log('Service Worker berhasil didaftarkan dengan cakupan:', registration.scope);
+        //             })
+        //             .catch((error) => {
+        //                 console.log('Gagal mendaftarkan Service Worker:', error);
+        //             });
+        //     });
+        // }
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const btnSave = document.getElementById("export");
+        const findPath = document.getElementById("find");
+        const stepBFS = document.getElementById("stepBFS");
+        const server = document.getElementById("Server");
+        const connect = document.getElementById("Connect");
+        const offline = document.getElementById("offline");
+        const btnDelete = document.getElementById("btnDelete");
+        const btnClear = document.getElementById("btnClear");
+        const demo = document.getElementById("Demo");
+
+        // const route
+        const createPopup = document.getElementById("popup");
+        const inputName = document.getElementById("inputName");
+        const btnCreate = document.getElementById("create");
+        const inputRole = document.getElementById("inputRole");
+
+        //const garis
+        const popupDistric = document.getElementById("popupDistric");
+        const inputNumber = document.getElementById("penghubung");
+        const btnconfrim = document.getElementById("confrim");
+
+        //tambahn fitur bfs
+        let bfsQueue = [];
+        let bfsVisited = new Set();
+
+        //membuat id 
+        let notes = []  //id label;
+        let edges = []  //id garis;
+        let selected = null 
+        let paddingId = null;
+
+        let officeX = 0;
+        let officeY = 0;
+        let slice = 1;
+        const radius = 32;
+        let mode = "NORMAL"
+
+        let start = new Set();
+        let end = new Set();
+
+        //membuat variabel untuk mouse
+        let isDrag = false;
+        let isPanning = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        let padding = {x:0,y:0}
+
+        function drawCanvas(){
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+
+        function draw( c = canvas.width , r = canvas.height){
+            render(c,r);
+
+            ctx.save();
+            ctx.translate(officeX,officeY);
+            ctx.scale(slice,slice)
+
+            edges.forEach((edge,idx) =>{
+                const h1 = notes.find(h => h.id === edge.from);
+                const h2 = notes.find(h => h.id === edge.to);
+                if(!h1 || !h2)return;
+
+                const isAnyOffline = h1.isOffline || h2.isOffline;
+                const isHightlind = end.has(idx);
+
+                ctx.beginPath();
+                ctx.moveTo(h1.x , h1.y);
+                ctx.lineTo(h2.x , h2.y);
+                ctx.strokeStyle = isHightlind ? 'blue' : 'black';
+                ctx.lineWidth = isHightlind ? 3 :1.5;
+
+                if(isAnyOffline) ctx.setLineDash([5, 5]);
+                else ctx.setLineDash([]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                const midX = (h1.x + h2.x) /2;
+                const midY = (h1.y + h2.y) /2;
+
+                ctx.fillStyle ="#ffffff";
+                ctx.fillRect(midX -14 , midY -10,28,20);
+
+                ctx.fillStyle = isHightlind ? '#2563eb' : '#111111';
+                ctx.font = '600 13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(edge.weight ,midX,midY);
+            });
+
+            notes.forEach(node =>{
+                const isSelected = node.id === selected;
+                const isHeighted = start.has(node.id);
+                const active = isSelected || isHeighted;
+
+                ctx.beginPath();
+                ctx.arc(node.x , node.y , radius ,0,Math.PI * 2);
+                ctx.fillStyle = node.isOffline ? "#cbd5e1" : "white";
+                ctx.fill();
+
+                ctx.lineWidth = active ? 3 : 1.5;
+                // ctx.strokeStyle = active ? "blue" : "black";
+                ctx.strokeStyle = node.isOffline ? "#e11d48" : (active ? "blue" : "black");
+                if(node.isOffline) ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = node.isOffline ? "#e11d48" : "black";
+                ctx.fill();
+
+                ctx.fillStyle = node.isOffline ? "#64748b" : (active ? "blue" : "black");
+                ctx.textAlign = "center";
+                ctx.font = "16px bold";
+                ctx.fillText(node.label,node.x,node.y + radius + 16);
+
+                let badgeText = "";
+                let badgeColor = "";
+
+                if(node.isOffline){
+                    badgeText = "OFFLINE";
+                    badgeColor = "#e11d48";
+                } else if(node.role === "KEY"){
+                    badgeText = "KEY";
+                    badgeColor = "#0284c7";
+                } else if(node.role === "LOCKED"){
+                    badgeText = "LOCKED";
+                    badgeColor = "#7c3aed";
+                } else if(node.role === "SERVER"){
+                    badgeText = "SERVER";
+                    badgeColor = "#334155";
+                }
+
+                // if(node.isOffline){
+                //     // ctx.fillStyle = "#e11d48";
+                //     // ctx.font = "10px sans-serif";
+                //     // ctx.fillText("[OFFLINE]", node.x, node.y + radius + 14);
+
+                //     const badgeText = "OFFLINE";
+                //     ctx.font = "bold 9px sans-serif";
+                //     const textWidth = ctx.measureText(badgeText).width;
+                    
+                //     // Kotak Lencana Merah di Atas
+                //     ctx.fillStyle = "#e11d48";
+                //     ctx.fillRect(node.x - textWidth/2 - 5, node.y - radius - 20, textWidth + 10, 14);
+                    
+                //     // Teks Putih di dalam Lencana
+                //     ctx.fillStyle = "white";
+                //     ctx.textAlign = "center";
+                //     ctx.textBaseline = "middle";
+                //     ctx.fillText(badgeText, node.x, node.y - radius - 13);
+                //     ctx.textBaseline = "alphabetic"; // Reset text baseline
+                // }
+                if(badgeText){
+                    ctx.font = "bold 9px sans-serif";
+                    const textWidth = ctx.measureText(badgeText).width;
+                    
+                    ctx.fillStyle = badgeColor;
+                    ctx.fillRect(node.x - textWidth/2 - 5, node.y - radius - 20, textWidth + 10, 14);
+                    
+                    ctx.fillStyle = "white";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(badgeText, node.x, node.y - radius - 13);
+                    ctx.textBaseline = "alphabetic";
+                }
+            });
+            ctx.restore();
+        }
+
+
+        function render( c = canvas.width , r = canvas.height){
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0,0,c,r);
+            
+            const gride = 25 * slice;
+            const startX = officeX % gride;
+            const startY = officeY % gride;
+
+            //membuat warnapada garis tepi
+            ctx.strokeStyle = "#e5e7eb";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+
+            for(let y=startY ; y<r; y+=gride){
+                ctx.moveTo(0,y);
+                ctx.lineTo(c,y);
+            }
+
+            for(let x=startX ; x<c ; x+=gride){
+                ctx.moveTo(x,0);
+                ctx.lineTo(x,r);
+            }
+
+            ctx.stroke();
+        }
+
+        //membuat fungsi mouse
+        canvas.addEventListener("dblclick",(e)=>{
+            closePopup();
+            const worldPost = screeworld(e.clientX,e.clientY);
+            padding = worldPost;
+
+            createPopup.style.left = `${Math.min(e.clientX,window.innerWidth -240)}px`;
+            createPopup.style.top = `${Math.min(e.clientY,window.innerHeight -100)}px`;
+            createPopup.style.display = "flex";
+            inputName.value = "";
+            inputRole.value = "STANDARD";
+            inputName.focus();
+        });
+        canvas.addEventListener("mousedown",(e)=>{
+            if(e.button !==0)return;
+            closePopup();
+
+            const worldPost = screeworld(e.clientX ,e.clientY);
+            const clickNode = getnodeId(worldPost.x , worldPost.y);
+
+            if(clickNode){
+                if(mode ==='CONNECT_TARGET'){
+                    if(clickNode.id !== selected){
+                        paddingId = clickNode.id;
+                        popupDistric.style.display = "flex",
+                        inputNumber.value = "";
+                        inputNumber.focus();
+                    }
+                    mode = "NORMAL";
+                    updateTollBar();
+                    draw();
+                    return;
+                }
+                if(mode ==="FIND_PATH_TARGET"){
+                    if(clickNode.id !== selected){
+                        fiindStore(selected,clickNode.id);
+                        selected = null;
+                    }
+                    mode ="NORMAL";
+                    updateTollBar();
+                    draw();
+                    return
+                }
+                selected = clickNode.id;
+                isDrag = true;
+                dragStartX = worldPost.x - clickNode.x;
+                dragStartY = worldPost.y - clickNode.y
+            }else{
+                selected = null;
+                mode = "NORMAL";
+                start.clear();
+                end.clear();
+                isPanning =true;
+                dragStartX = e.clientX - officeX;
+                dragStartY = e.clientY - officeY;
+            }
+            updateTTLStats();
+            updateTollBar();
+            draw();
+        });
+        canvas.addEventListener("mousemove",(e)=>{
+            if(isDrag && selected){
+                const worldPost = screeworld(e.clientX ,e.clientY);
+                const node = notes.find(n=>n.id === selected);
+                if(node){
+                    node.x = worldPost.x - dragStartX;
+                    node.y = worldPost.y - dragStartY;
+                    draw();
+                };
+            }else if(isPanning){
+                officeX = e.clientX - dragStartX;
+                officeY = e.clientY - dragStartY;
+                draw();
+            }
+        });
+        canvas.addEventListener("mouseup",()=>{
+            if(isDrag){
+                savePopup();
+            }
+            isDrag = false;
+            isPanning = false
+        });
+        canvas.addEventListener("wheel",(e)=>{
+            if(e.ctrlKey){
+                e.preventDefault();
+                const zoomFactor = e.deltaY <0 ? 1.1 : 0.9;
+                const oldSlice = slice;
+                slice = Math.min(Math.max(slice * zoomFactor,0.3),3);
+                officeX =e.clientX - (e.clientX - officeX) * (slice / oldSlice);
+                officeY =e.clientY - (e.clientY - officeY) * (slice /oldSlice);
+                draw();
+            }
+        },{passive:false});
+
+        window.addEventListener("keydown",(e)=>{
+            if(e.key === "Delete" || e.key === "Backspace"){
+                if(document.activeElement.tagName !== "INPUT") deleteselcteion();
+            }
+            if(e.key === "0" && selected){
+                toolageOffline();
+            }
+        })
+
+
+        //membung fungsi popup
+        btnCreate.addEventListener("click",createPopupp);
+        inputName.addEventListener("keydown",(e)=>{
+            if(e.key === "Enter") createPopupp();
+            if(e.key === "Escape") closePopup();
+        });
+
+        btnconfrim.addEventListener("click",applayying);
+        inputNumber.addEventListener("keydown",(e)=>{
+            if(e.key === "Enter")applayying();
+            if(e.key === "Escape")closePopup(); 
+        });
+
+
+        //fungsi function pendukung
+        function applayying(){
+            const weight = parseFloat(inputNumber.value);
+            if(isNaN(weight) ||weight<=0 || !selected || !paddingId)return;
+
+            const exiting = edges.findIndex(edge =>{
+                (edge.from === selected && edge.to === paddingId) ||
+                (edge.from === paddingId && edge.to === selected)
+            });
+            if(exiting !== -1){
+                edges.splice(exiting,1)
+            }
+            edges.push({
+                from :selected,
+                to : paddingId,
+                weight
+            });
+            paddingId = null;
+            savePopup();
+            closePopup();
+            updateTTLStats();
+            draw();
+        }
+        function updateTTLStats() {
+            const hop1Elem = document.getElementById("hop1");
+            const hop2Elem = document.getElementById("hop2");
+            const hop3Elem = document.getElementById("hop3");
+
+            let activeNodeId = selected;
+            if (!activeNodeId && start.size > 0) {
+                activeNodeId = Array.from(start)[0];
+            }
+
+            if (!activeNodeId) {
+                hop1Elem.innerText = "0";
+                hop2Elem.innerText = "0";
+                hop3Elem.innerText = "0";
+                return;
+            }
+
+            let distances = {};
+            let queue = [activeNodeId];
+            distances[activeNodeId] = 0;
+
+            let h1Count = 0;
+            let h2Count = 0;
+            let h3Count = 0;
+
+            while (queue.length > 0) {
+                let currId = queue.shift();
+                let currDist = distances[currId];
+
+                edges.forEach(edge => {
+                    let neighbor = null;
+                    const h1 = notes.find(h => h.id === edge.from);
+                    const h2 = notes.find(h => h.id === edge.to);
+                    if (!h1 || !h2 || h1.isOffline || h2.isOffline) return;
+
+                    if (edge.from === currId) neighbor = edge.to;
+                    else if (edge.to === currId) neighbor = edge.from;
+
+                    if (neighbor && distances[neighbor] === undefined) {
+                        distances[neighbor] = currDist + 1;
+                        queue.push(neighbor);
+
+                        if (distances[neighbor] === 1) h1Count++;
+                        else if (distances[neighbor] === 2) h2Count++;
+                        else if (distances[neighbor] >= 3) h3Count++;
+                    }
+                });
+            }
+
+            hop1Elem.innerText = h1Count;
+            hop2Elem.innerText = h2Count;
+            hop3Elem.innerText = h3Count;
+        }
+        function toolageOffline(){
+            const node = notes.find(n=>n.id === selected);
+            if(node){
+                node.isOffline = !node.isOffline;
+                savePopup();
+                draw();
+            }
+        }
+        function deleteselcteion(){
+            if(!selected)return;
+            notes = notes.filter(n=>n.id !== selected);
+            edges = edges.filter(e=>e.from !== selected && e.to !== selected );
+            selected = null;
+            mode ="NORMAL";
+            start.clear();
+            end.clear();
+            bfsQueue =[];
+            savePopup();
+            updateTollBar();
+            draw();
+        }
+        function getnodeId(wx,wy){
+            for(let i = notes.length -1 ; i>=0;i--){
+                const n = notes[i];
+                const disk = Math.hypot(wx -n.x ,wy -n.y);
+                if(disk <= radius) return n
+            }
+            return null
+        }
+        function createPopupp(){
+            const label = inputName.value.trim();
+            const role = inputRole.value
+            if(!label) return;
+            const newCode ={
+                id : Date.now().toString(),
+                label,
+                role,
+                x : padding.x,
+                y: padding.y,
+                isOffline : false
+            };
+            notes.push(newCode);
+            savePopup();
+            closePopup();
+            draw();
+
+        }
+        function screeworld(xx,yy){
+            return {
+                x:(xx - officeX) / slice,
+                y:(yy - officeY) /slice,
+            }
+        }
+        function loadRect(){
+            const saved = localStorage.getItem('node_visualizer_data');
+            if(saved){
+                try{
+                    const pared = JSON.parse(saved);
+                    notes = pared.notes || [];
+                    edges = pared.edges || [];
+                }catch(e){
+                    console.error("gagal masuk data",e);
+                }
+            }
+        }
+        function savePopup(){
+            localStorage.setItem("node berhasil disimpan",JSON.stringify({notes,edges}));
+        }
+        function closePopup(){
+            createPopup.style.display = "none";
+            popupDistric.style.display = "none";
+        }
+        function updateTollBar(){
+            const hasSelected = selected !== null;
+            connect.disabled = !hasSelected;
+            findPath.disabled = !hasSelected;
+            stepBFS.disabled = !hasSelected;
+            server.disabled = !hasSelected;
+            offline.disabled = !hasSelected;
+            // demo.disabled = !hasSelected;
+            btnDelete.disabled = !hasSelected;
+            
+            if(mode === "CONNECT_TARGET"){
+                findPath.classList.add('active')
+            }else{
+                findPath.classList.remove('active');
+            }
+
+            if(mode === "FIND_PATH_TARGET"){
+                connect.classList.add('active');
+            }else{
+                connect.classList.remove('active');
+            }
+        }
+        function runStepBFS(){
+            if(!selected){
+                alert("pili node awal");
+            }
+            if(bfsQueue.length ===0){
+                const startNode = notes.find(n=>n.id === selected);
+                if(!startNode || startNode.isOffline){
+                    alert("node awal tidak valid atau sedang offline");
+                }
+                bfsQueue = [selected];
+                bfsVisited = new Set([selected]);
+                start.clear();
+                end.clear();
+                start.add(selected);
+                draw();
+                return;
+            }
+            let nextQueue = [];
+            let newNodes = new Set(start);
+            let newEdges = new Set(end);
+
+            bfsQueue.forEach(currId => {
+                edges.forEach((edge, idx) => {
+                    let neight = null;
+                    const h1 = notes.find(h => h.id === edge.from);
+                    const h2 = notes.find(h => h.id === edge.to);
+                    if(!h1 || !h2 || h1.isOffline || h2.isOffline) return;
+
+                    if(edge.from === currId) neight = edge.to;
+                    else if(edge.to === currId) neight = edge.from;
+
+                    if(neight && !bfsVisited.has(neight)){
+                        bfsVisited.add(neight);
+                        nextQueue.push(neight);
+                        newNodes.add(neight);
+                        newEdges.add(idx);
+                    }
+                });
+            });
+
+            if (nextQueue.length === 0) {
+                alert("Pencarian BFS selesai! Semua node terjangkau telah dijelajahi.");
+                bfsQueue = [];
+                return;
+            }
+
+            bfsQueue = nextQueue;
+            start = newNodes;
+            end = newEdges;
+            draw();
+        }
+        function fiindStore(startId, endId){
+            let queue = [{ id: startId, auth: false, path: [startId], edgesUsed: [] }];
+            let visitedState = new Set([`${startId}_false`]);
+
+            const targetNode = notes.find(n => n.id === endId);
+            const needsAuth = targetNode && targetNode.role === "LOCKED";
+
+            let foundPathData = null;
+
+            while(queue.length > 0){
+                let { id, auth, path, edgesUsed } = queue.shift();
+
+                const currentNode = notes.find(n => n.id === id);
+                if(currentNode && currentNode.role === "KEY") auth = true;
+
+                if(id === endId){
+                    if(!needsAuth || auth){
+                        foundPathData = { path, edgesUsed };
+                        break;
+                    }
+                }
+
+                edges.forEach((edge, idx) => {
+                    let neight = null;
+                    const h1 = notes.find(h => h.id === edge.from);
+                    const h2 = notes.find(h => h.id === edge.to);
+                    if(!h1 || !h2 || h1.isOffline || h2.isOffline) return;
+
+                    if(edge.from === id) neight = edge.to;
+                    else if(edge.to === id) neight = edge.from;
+
+                    if(neight){
+                        let nextAuth = auth;
+                        const nextNode = notes.find(n => n.id === neight);
+                        if(nextNode && nextNode.role === "KEY") nextAuth = true;
+
+                        let stateKey = `${neight}_${nextAuth}`;
+                        if(!visitedState.has(stateKey)){
+                            visitedState.add(stateKey);
+                            queue.push({
+                                id: neight,
+                                auth: nextAuth,
+                                path: [...path, neight],
+                                edgesUsed: [...edgesUsed, idx]
+                            });
+                        }
+                    }
+                });
+            }
+
+            start.clear();
+            end.clear();
+
+            if(!foundPathData){
+                alert("Destination Host Unreachable (0 valid routes)");
+                return;
+            }
+
+            foundPathData.path.forEach(id => start.add(id));
+            foundPathData.edgesUsed.forEach(idx => end.add(idx));
+            draw();
+        }
+        // function fiindStore(startId, endId){
+        //     const ditance = {};
+        //     const prevince ={};
+        //     const edgeUsed ={};
+        //     const univised = new Set();
+
+        //     notes.forEach(n=>{
+        //         if(!n.isOffline){
+        //             ditance[n.id] = Infinity;
+        //             prevince[n.id] = null;
+        //             univised.add(n.id);
+        //         }
+        //     });
+        //     if(ditance[startId] === undefined || ditance[endId] === undefined){
+        //         alert("Node sumber atau tujuan sedang offline!");
+        //         return;
+        //     }
+        //     ditance[startId] = 0;
+        //     while(univised.size >0){
+        //         let currendId = null;
+        //         univised.forEach(id=>{
+        //             if(currendId === null || ditance[id] < ditance[currendId]){
+        //                 currendId = id
+        //             }
+        //         });
+        //         if (currendId === null || ditance[currendId] === Infinity ) break;
+        //         if (currendId === endId)break;
+
+        //         univised.delete(currendId);
+
+        //         edges.forEach((edge,idx)=>{
+        //             let neight = null;
+
+        //             const h1 = notes.find(h => h.id === edge.from);
+        //             const h2 = notes.find(h => h.id === edge.to);
+        //             if(!h1 || !h2 || h1.isOffline || h2.isOffline) return;
+
+        //             if(edge.from === currendId) neight = edge.to;
+        //             else if(edge.to === currendId) neight = edge.from;
+
+        //             if(neight && univised.has(neight)){
+        //                 const alt = ditance[currendId] + Number(edge.weight);
+        //                 if(alt < ditance[neight]){
+        //                     ditance[neight] = alt;
+        //                     prevince[neight] = currendId;
+        //                     edgeUsed[neight] = idx
+        //                 }
+        //             }
+        //         });
+        //     }
+        //     if(ditance[endId] === Infinity){
+        //         alert("tidak ada rute yang menghubungkan kedua node tersebut");
+        //         return;
+        //     }
+        //     start.clear();
+        //     end.clear();
+
+        //     let curr = endId;
+        //     while(curr !== null){
+        //         start.add(curr);
+        //         if(edgeUsed[curr] !== undefined){
+        //             end.add(edgeUsed[curr])
+        //         }
+        //         curr = prevince[curr]
+        //     }
+        //     draw();
+        // }
+
+        //fungsi 9 button
+        btnSave.addEventListener("click",()=>{
+            const link = document.createElement("a");
+            link.download = "reult.png";
+            link.href = canvas.toDataURL('/img/png');
+            link.click();
+        });
+        btnClear.addEventListener("click",()=>{
+            notes =[];
+            edges = [];
+            selected=[];
+            start.clear();
+            end.clear();
+            bfsQueue =[];
+            savePopup();
+            draw();
+        });
+        btnDelete.addEventListener("click",deleteselcteion);
+        connect.addEventListener("click",()=>{
+            if(!selected)return;
+            mode  = mode ===  'CONNECT_TARGET' ? 'NORMAL' : 'CONNECT_TARGET';
+            updateTollBar();
+            draw();
+            return;
+        });
+        findPath.addEventListener("click",()=>{
+            if(!selected) return;
+            mode = mode === 'FIND_PATH_TARGET' ? 'NORMAL' : 'FIND_PATH_TARGET';
+            updateTollBar();
+        });
+        offline.addEventListener("click",()=>{
+            if(!selected)return;
+            toolageOffline();
+        });
+        stepBFS.addEventListener("click",()=>{
+            runStepBFS();
+        })
+        server.addEventListener("click",()=>{
+            if(!selected){
+                alert("pilih dulu");
+                return;
+            }
+            const serverNod = notes.filter(n =>n.role ==="SERVER" && !n.isOffline);
+            if(serverNod.length === 0){
+                alert("tidak ada server");
+            }
+            let queue = [{id:selected,path:[selected],edgesUsed : []}];
+            let visited =  new Set([selected]);
+            let found  = false;
+
+            start.clear();
+            end.clear();
+
+            while(queue.length > 0 && !found){
+                let { id, path, edgesUsed } = queue.shift();
+                const currNode = notes.find(n => n.id === id);
+
+                if(currNode && currNode.role === "SERVER"){
+                    path.forEach(nid=>start.add(nid));
+                    edgesUsed.forEach(eIdx => end.add(eIdx));
+                    found = true;
+                    break;
+                }
+
+                edges.forEach((edge,idx)=>{
+                    let neight= null;
+                    const h1 = notes.find(h=>h.id === edge.from);
+                    const h2 = notes.find(h=>h.id === edge.to);
+                    if(!h1 || !h2 || h1.isOffline || h2.isOffline)return;
+                    
+                    if(edge.from === id)neight = edge.to;
+                    else if(edge.to === id)neight = edge.from;
+
+                    if(neight && !visited.has(neight)){
+                        visited.add(neight);
+                        queue.push({
+                            id:neight,
+                            path : [...path,neight],
+                            edgesUsed : [...edgesUsed,idx]
+                        });
+                    }
+                })
+            }
+            if(!found) alert("Tidak ada server yang online");
+            draw();
+        });
+
+        demo.addEventListener("click",()=>{
+            // Bersihkan data lama
+            notes = [];
+            edges = [];
+            selected = null;
+            start.clear();
+            end.clear();
+            bfsQueue = [];
+
+            // Buat node sesuai contoh gambar (menggunakan koordinat canvas yang pas)
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            notes = [
+                { id: "n1", label: "Client-PC", role: "STANDARD", x: cx - 350, y: cy, isOffline: false },
+                { id: "n2", label: "Router-A", role: "STANDARD", x: cx - 180, y: cy + 50, isOffline: true }, // Router-A dibuat offline sebagai contoh
+                { id: "n3", label: "Auth-Gateway", role: "KEY", x: cx - 180, y: cy - 140, isOffline: false },
+                { id: "n4", label: "Switch-1", role: "STANDARD", x: cx + 20, y: cy - 60, isOffline: false },
+                { id: "n5", label: "Switch-2", role: "STANDARD", x: cx + 20, y: cy + 140, isOffline: false },
+                { id: "n6", label: "Edge-Server-1", role: "SERVER", x: cx + 220, y: cy - 140, isOffline: false },
+                { id: "n7", label: "Core-DB", role: "LOCKED", x: cx + 220, y: cy + 10, isOffline: false },
+                { id: "n8", label: "Edge-Server-2", role: "SERVER", x: cx - 180, y: cy + 240, isOffline: false }
+            ];
+
+            // Buat garis penghubung (edges) dan bobotnya
+            edges = [
+                { from: "n1", to: "n2", weight: 5 },  // Client-PC ke Router-A
+                { from: "n3", to: "n2", weight: 8 },  // Auth-Gateway ke Router-A
+                { from: "n2", to: "n4", weight: 10 }, // Router-A ke Switch-1
+                { from: "n2", to: "n5", weight: 12 }, // Router-A ke Switch-2
+                { from: "n4", to: "n6", weight: 7 },  // Switch-1 ke Edge-Server-1
+                { from: "n4", to: "n7", weight: 4 },  // Switch-1 ke Core-DB
+                { from: "n5", to: "n7", weight: 6 },  // Switch-2 ke Core-DB
+                { from: "n5", to: "n8", weight: 9 }   // Switch-2 ke Edge-Server-2
+            ];
+
+            savePopup();
+            updateTollBar();
+            draw();
+        })
+
+        drawCanvas();
+        loadRect();
+        updateTollBar();
+        
+    </script>
+</body>
+</html>
